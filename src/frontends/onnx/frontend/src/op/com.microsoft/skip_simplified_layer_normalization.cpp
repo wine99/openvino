@@ -52,9 +52,7 @@ ov::OutputVector skip_simplified_layer_normalization(const ov::frontend::onnx::N
 
     // multiply by gamma
     result = std::make_shared<v1::Multiply>(result, nodes[2]);
-    // spec mentions three outputs (output, mean, inv_std_var) while we support only first one, but:
-    // - onnxruntime also doesn't support the last two
-    // - we'd have to unroll MVN to have them
+
     return {result, mean, inv_std_var, input};
 }
 ONNX_OP("SkipSimplifiedLayerNormalization", OPSET_SINCE(1), com_microsoft::opset_1::skip_simplified_layer_normalization, MICROSOFT_DOMAIN);
