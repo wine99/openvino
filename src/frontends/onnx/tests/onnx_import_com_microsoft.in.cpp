@@ -1356,3 +1356,25 @@ OPENVINO_TEST(${BACKEND_NAME}, onnx_com_microsoft_quickgelu) {
         test_case.run();
     }
 }
+
+OPENVINO_TEST(${BACKEND_NAME}, onnx_model_skip_simplified_layer_normalization) {
+    const auto model = convert_model("com.microsoft/skip_simplified_layer_normalization.onnx");
+
+    std::vector<float> input = {
+        0.8f, -0.5f, 0.0f, 1.f,
+        0.5f, 0.2f, 0.3f, -0.6f,
+    };
+    std::vector<float> skip = {
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+    };
+    std::vector<float> expected = {
+        0.3491f, -0.1455f, 0.0000f, 3.2005f,
+        0.3487f, 0.0930f, 2.7899f, -3.0689f,
+    };
+    auto test_case = ov::test::TestCase(model, s_device);
+    test_case.add_input<float>(input);
+    test_case.add_input<float>(skip);
+    test_case.add_expected_output<float>(expected);
+    test_case.run_with_tolerance_as_fp();
+}
