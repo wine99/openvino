@@ -9,6 +9,7 @@
 #include "openvino/op/convert.hpp"
 #include "openvino/op/divide.hpp"
 #include "openvino/op/multiply.hpp"
+#include "openvino/op/power.hpp"
 #include "openvino/op/range.hpp"
 #include "openvino/op/reduce_mean.hpp"
 #include "openvino/op/shape_of.hpp"
@@ -54,7 +55,7 @@ ov::OutputVector simplified_layer_normalization(const ov::frontend::onnx::Node& 
         X = std::make_shared<v0::Convert>(X, stash_type);
     }
 
-    auto squared_X = std::make_shared<v1::Multiply>(X, X);                // X^2
+    auto squared_X = std::make_shared<v1::Power>(X, v0::Constant::create(stash_type, {}, {2}));  // X^2
     auto mean = std::make_shared<v1::ReduceMean>(squared_X, axes, true);  // mean = (1/N) * Σ(j=1 to N) X_j^2
     auto rms_value =
         std::make_shared<v0::Sqrt>(std::make_shared<v1::Add>(mean, v0::Constant::create(stash_type, {}, {epsilon})));
