@@ -51,7 +51,6 @@ std::vector<int64_t> get_qkv_sizes(const PartialShape& input_shape, int num_head
     return qkv_sizes;
 }
 
-// TODO
 void GroupQueryAttention::validate_and_infer_types() {
     OV_OP_SCOPE(GroupQueryAttention_validate_and_infer_types);
     PartialShape input_shape = get_input_partial_shape(0);
@@ -67,6 +66,7 @@ void GroupQueryAttention::validate_and_infer_types() {
     PartialShape kv_past_shape = get_input_partial_shape(3);
     // FIXME: Original GQA spec depends on the identical tensor set for input/output, but we cannot know it in advance,
     // hence we base on sequence dimension static/dynamic
+    // https://github.com/openvinotoolkit/openvino/pull/27648
     if (kv_past_shape[2].is_dynamic()) {
         output_kv_len = kv_past_shape[2] + sequence_len;
     } else {

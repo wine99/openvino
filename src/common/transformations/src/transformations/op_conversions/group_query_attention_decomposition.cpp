@@ -49,9 +49,7 @@
 #include "openvino/pass/pattern/op/wrap_type.hpp"
 #include "transformations/utils/utils.hpp"
 
-std::shared_ptr<ov::Node> get_present_state(const std::shared_ptr<ov::Node>& K,
-                                            const std::shared_ptr<ov::Node>& V,
-                                            const ov::OutputVector& op_inputs);
+
 std::shared_ptr<ov::Node> rotaryEmbedding(ov::Output<ov::Node> input,
                                           ov::Output<ov::Node> past_seqlen,
                                           std::shared_ptr<ov::Node> seqlen_k,
@@ -113,7 +111,7 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     const auto hidden_size = get_dimensions(node_shape, {2});
     const auto total_num_heads_node =
         v0::Constant::create(ov::element::i64, ov::Shape{1}, {num_heads + kv_num_heads + kv_num_heads});
-    auto head_size_node = std::make_shared<v1::Divide>(hidden_size, total_num_heads_node);
+    auto head_size_node = std::make_shared<v1::Divide>(hidden_size, total_num_heads_node);  // should be equal to the last dim of past_key
 
     // transpose Q, K and V to (batch_size, num_heads, sequence_len, head_size)
     auto perm = v0::Constant::create(ov::element::i64, ov::Shape{4}, {0, 2, 1, 3});
@@ -175,8 +173,8 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
 
     K = construct_kv_cache(past_key, K);
     V = construct_kv_cache(past_value, V);
-    auto present_k = K.get_node_shared_ptr();
-    auto present_v = V.get_node_shared_ptr();
+    auto present_k = K;
+    auto present_v = V;
 
     const size_t kv_num_heads_factor = num_heads / kv_num_heads;
     if (kv_num_heads_factor > 1) {
@@ -232,7 +230,7 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     auto dim_merge_shape = v0::Constant::create(ov::element::i32, ov::Shape{3}, {0, 0, -1});
     // reshape the result from (batch_size, sequence_length, num_heads, head_size)
     //          to             (batch_size, sequence_length, num_heads * head_size)
-    auto output = std::make_shared<v1::Reshape>(qga_output_transposed, dim_merge_shape, true);
+    auto output = std::make_shared<v1::Reshape>(qga_output_transposed, dim_merge_shape, true)->output(0);
 
     return {output, present_k, present_v};
 }
