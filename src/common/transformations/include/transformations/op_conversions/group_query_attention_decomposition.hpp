@@ -20,5 +20,5 @@ class ov::pass::GroupQueryAttentionDecomposition : public ov::pass::MatcherPass 
 public:
     OPENVINO_RTTI("GroupQueryAttentionDecomposition", "0");
     GroupQueryAttentionDecomposition();
-    ov::OutputVector decompose(std::shared_ptr<ov::op::GroupQueryAttention> node);
+    ov::OutputVector decompose(std::shared_ptr<ov::op::v15::GroupQueryAttention> node);
 };

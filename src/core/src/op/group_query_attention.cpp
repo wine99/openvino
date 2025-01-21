@@ -11,6 +11,7 @@
 using namespace std;
 namespace ov {
 namespace op {
+namespace v15 {
 
 Output<Node> GroupQueryAttention::null() {
     return v0::Constant::create(element::f32, Shape{0}, {});  // particular type and shape do not matter
@@ -52,7 +53,7 @@ std::vector<int64_t> get_qkv_sizes(const PartialShape& input_shape, int num_head
 }
 
 void GroupQueryAttention::validate_and_infer_types() {
-    OV_OP_SCOPE(GroupQueryAttention_validate_and_infer_types);
+    OV_OP_SCOPE(v15_GroupQueryAttention_validate_and_infer_types);
     PartialShape input_shape = get_input_partial_shape(0);
     Dimension batch_size = input_shape[0];
     Dimension sequence_len = input_shape[1];
@@ -78,8 +79,18 @@ void GroupQueryAttention::validate_and_infer_types() {
     set_output_type(2, element_type, PartialShape{batch_size, m_kv_num_heads, output_kv_len, head_size});
 }
 
+bool GroupQueryAttention::visit_attributes(AttributeVisitor& visitor) {
+    OV_OP_SCOPE(v15_GroupQueryAttention_visit_attributes);
+    visitor.on_attribute("do_rotary", m_do_rotary);
+    visitor.on_attribute("kv_num_heads", m_kv_num_heads);
+    visitor.on_attribute("num_heads", m_num_heads);
+    visitor.on_attribute("rotary_interleaved", m_rotary_interleaved);
+    visitor.on_attribute("scale", m_scale);
+    return true;
+}
+
 std::shared_ptr<ov::Node> GroupQueryAttention::clone_with_new_inputs(const ov::OutputVector& new_args) const {
-    OV_OP_SCOPE(GroupQueryAttention_clone_with_new_inputs);
+    OV_OP_SCOPE(v15_GroupQueryAttention_clone_with_new_inputs);
     return std::make_shared<GroupQueryAttention>(new_args,
                                                  m_num_heads,
                                                  m_kv_num_heads,
@@ -88,5 +99,6 @@ std::shared_ptr<ov::Node> GroupQueryAttention::clone_with_new_inputs(const ov::O
                                                  m_rotary_interleaved);
 }
 
+}  // namespace v15
 }  // namespace op
 }  // namespace ov

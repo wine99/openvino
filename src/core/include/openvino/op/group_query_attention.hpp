@@ -7,16 +7,18 @@
 
 namespace ov {
 namespace op {
+namespace v15 {
 
 // This is an experimental operation that is implemented in the plugins.
-class OPENVINO_API GroupQueryAttention : public ov::op::Op {
+class OPENVINO_API GroupQueryAttention : public Op {
 public:
-    OPENVINO_OP("GroupQueryAttention");
+    OPENVINO_OP("GroupQueryAttention", "opset16", op::Op);
 
     // helpers to make and detect inputs that are not used
     static Output<Node> null();
     static bool is_null(const Output<Node> output);
 
+    GroupQueryAttention() = default;
     GroupQueryAttention(const ov::OutputVector& args,
                         unsigned int num_heads,
                         unsigned int kv_num_heads,
@@ -24,9 +26,8 @@ public:
                         bool do_rotary,
                         bool rotary_interleaved);
     void validate_and_infer_types() override;
+    bool visit_attributes(AttributeVisitor& visitor) override;
     std::shared_ptr<ov::Node> clone_with_new_inputs(const ov::OutputVector& new_args) const override;
-
-    // TODO: implement visit_attributes
 
     unsigned int get_num_heads() const {
         return m_num_heads;
@@ -52,8 +53,6 @@ private:
     bool m_rotary_interleaved = false;
 };
 
-// // NPUW friendly decomposition
-// OPENVINO_API ov::OutputVector group_query_attention_decomposition(std::shared_ptr<GroupQueryAttention> gqa);
-
+}  // namespace v15
 }  // namespace op
 }  // namespace ov

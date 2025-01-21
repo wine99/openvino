@@ -4,6 +4,7 @@
 
 #include "transformations/op_conversions/group_query_attention_decomposition.hpp"
 
+#include <iostream>
 #include <memory>
 
 #include "itt.hpp"
@@ -49,7 +50,6 @@
 #include "openvino/pass/pattern/op/wrap_type.hpp"
 #include "transformations/utils/utils.hpp"
 
-
 std::shared_ptr<ov::Node> rotaryEmbedding(ov::Output<ov::Node> input,
                                           ov::Output<ov::Node> past_seqlen,
                                           std::shared_ptr<ov::Node> seqlen_k,
@@ -64,12 +64,13 @@ ov::OutputVector make_split(const ov::Output<ov::Node>& value, const std::vector
 
 ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
     MATCHER_SCOPE(GroupQeuryAttentionDecomposition);
-    auto pattern_node = ov::pass::pattern::wrap_type<ov::op::GroupQueryAttention>();
+    auto pattern_node = ov::pass::pattern::wrap_type<ov::op::v15::GroupQueryAttention>();
 
+    std::cout << "GQA Decomp create \n";
     matcher_pass_callback callback = [OV_CAPTURE_CPY_AND_THIS](ov::pass::pattern::Matcher& m) {
         auto& pattern_to_output = m.get_pattern_value_map();
         auto node =
-            ov::as_type_ptr<ov::op::GroupQueryAttention>(pattern_to_output.at(pattern_node).get_node_shared_ptr());
+            ov::as_type_ptr<ov::op::v15::GroupQueryAttention>(pattern_to_output.at(pattern_node).get_node_shared_ptr());
 
         if (node == nullptr || transformation_callback(node)) {
             return false;
@@ -85,8 +86,9 @@ ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
 }
 
 ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
-    std::shared_ptr<ov::op::GroupQueryAttention> node) {
+    std::shared_ptr<ov::op::v15::GroupQueryAttention> node) {
     using namespace ov::op;
+    std::cout << "GQA Decomp \n";
 
     const auto num_heads = node->get_num_heads();
     const auto kv_num_heads = node->get_kv_num_heads();
@@ -116,7 +118,7 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     // transpose Q, K and V to (batch_size, num_heads, sequence_len, head_size)
     auto perm = v0::Constant::create(ov::element::i64, ov::Shape{4}, {0, 2, 1, 3});
 
-    if (GroupQueryAttention::is_null(K)) {
+    if (v15::GroupQueryAttention::is_null(K)) {
         // Handle the packed QKV
         auto packed_qkv_shape = std::make_shared<v0::Concat>(
             ov::NodeVector{batch_size, current_seqlen_size, total_num_heads_node, head_size_node},

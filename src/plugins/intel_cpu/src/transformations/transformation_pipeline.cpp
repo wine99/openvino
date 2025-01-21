@@ -660,6 +660,7 @@ void Transformations::PreLpt(const std::vector<ov::element::Type>& defaultPrecis
     CPU_SET_CALLBACK_COMMON(manager, nmsCallback, ov::pass::ConvertMulticlassNmsToMulticlassNmsIE);
     CPU_SET_CALLBACK_COMMON(manager, nmsCallback, ov::pass::ConvertMatrixNmsToMatrixNmsIE);
     CPU_REGISTER_PASS_COMMON(manager, ov::pass::GroupQueryAttentionDecomposition);
+    CPU_ENABLE_PASS_COMMON(manager, ov::pass::GroupQueryAttentionDecomposition);
 
     // List of enabled/disabled transformations
 
