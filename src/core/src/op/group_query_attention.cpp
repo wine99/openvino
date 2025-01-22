@@ -4,26 +4,13 @@
 
 #include "openvino/op/group_query_attention.hpp"
 
-#include "dimension_util.hpp"
 #include "itt.hpp"
-#include "openvino/op/constant.hpp"
+#include "openvino/op/null.hpp"
 
 using namespace std;
 namespace ov {
 namespace op {
 namespace v15 {
-
-Output<Node> GroupQueryAttention::null() {
-    return v0::Constant::create(element::f32, Shape{0}, {});  // particular type and shape do not matter
-}
-
-bool GroupQueryAttention::is_null(const Output<Node> output) {
-    if (std::dynamic_pointer_cast<v0::Constant>(output.get_node_shared_ptr())) {
-        return output.get_shape().size() == 1 &&
-               output.get_element_type() ==
-                   element::f32;  // should match exactly with what we are creating in null function
-    }
-}
 
 GroupQueryAttention::GroupQueryAttention(const OutputVector& args,
                                          unsigned int num_heads,
@@ -58,7 +45,7 @@ void GroupQueryAttention::validate_and_infer_types() {
     Dimension batch_size = input_shape[0];
     Dimension sequence_len = input_shape[1];
     Dimension head_size;
-    if (is_null(input_value(1)) && is_null(input_value(2))) {
+    if (Null::is_null(input_value(1)) && Null::is_null(input_value(2))) {
         head_size = get_head_size(input_shape, m_num_heads, m_kv_num_heads);
     } else {
         head_size = input_shape[2].get_length() / m_num_heads;
@@ -74,6 +61,9 @@ void GroupQueryAttention::validate_and_infer_types() {
         output_kv_len = kv_past_shape[2];
     }
     auto element_type = get_input_element_type(0);
+    NODE_VALIDATION_CHECK(this,
+                          element_type == element::f32 || element_type == element::f16,
+                          "GroupQueryAttention only suuports f32 and f16");
     set_output_type(0, element_type, PartialShape{batch_size, sequence_len, head_size * m_num_heads});
     set_output_type(1, element_type, PartialShape{batch_size, m_kv_num_heads, output_kv_len, head_size});
     set_output_type(2, element_type, PartialShape{batch_size, m_kv_num_heads, output_kv_len, head_size});

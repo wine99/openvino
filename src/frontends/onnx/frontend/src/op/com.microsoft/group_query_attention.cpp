@@ -3,6 +3,7 @@
 //
 
 #include "openvino/op/group_query_attention.hpp"
+#include "openvino/op/null.hpp"
 
 #include "core/null_node.hpp"
 #include "core/operator_set.hpp"
@@ -28,7 +29,7 @@ ov::OutputVector group_query_attention(const ov::frontend::onnx::Node& node) {
     OutputVector ov_op_inputs;
     ov_op_inputs.reserve(onnx_op_inputs.size());
     for (const auto& input : onnx_op_inputs) {
-        ov_op_inputs.push_back(ov::op::util::is_null(input) ? v15::GroupQueryAttention::null() : input);
+        ov_op_inputs.push_back(ov::op::util::is_null(input) ? std::make_shared<v15::Null>() : input);
     }
     return std::make_shared<v15::GroupQueryAttention>(ov_op_inputs,
                                                       num_heads,

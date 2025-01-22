@@ -4,51 +4,31 @@
 
 #include "transformations/op_conversions/group_query_attention_decomposition.hpp"
 
-#include <iostream>
 #include <memory>
 
 #include "itt.hpp"
 #include "openvino/core/rt_info.hpp"
-#include "openvino/frontend/exception.hpp"
 #include "openvino/op/add.hpp"
-#include "openvino/op/broadcast.hpp"
 #include "openvino/op/concat.hpp"
 #include "openvino/op/constant.hpp"
 #include "openvino/op/convert.hpp"
-#include "openvino/op/convert_like.hpp"
 #include "openvino/op/divide.hpp"
-#include "openvino/op/equal.hpp"
-#include "openvino/op/floor.hpp"
-#include "openvino/op/floor_mod.hpp"
 #include "openvino/op/gather.hpp"
 #include "openvino/op/greater.hpp"
-#include "openvino/op/greater_eq.hpp"
-#include "openvino/op/less.hpp"
-#include "openvino/op/less_eq.hpp"
-#include "openvino/op/log.hpp"
-#include "openvino/op/logical_not.hpp"
-#include "openvino/op/logical_or.hpp"
-#include "openvino/op/matmul.hpp"
-#include "openvino/op/maximum.hpp"
 #include "openvino/op/multiply.hpp"
-#include "openvino/op/negative.hpp"
-#include "openvino/op/pad.hpp"
+#include "openvino/op/null.hpp"
 #include "openvino/op/range.hpp"
 #include "openvino/op/reshape.hpp"
 #include "openvino/op/scaled_dot_product_attention.hpp"
 #include "openvino/op/select.hpp"
 #include "openvino/op/shape_of.hpp"
 #include "openvino/op/slice.hpp"
-#include "openvino/op/softmax.hpp"
 #include "openvino/op/split.hpp"
-#include "openvino/op/sqrt.hpp"
-#include "openvino/op/squeeze.hpp"
 #include "openvino/op/subtract.hpp"
 #include "openvino/op/transpose.hpp"
 #include "openvino/op/unsqueeze.hpp"
 #include "openvino/op/variadic_split.hpp"
 #include "openvino/pass/pattern/op/wrap_type.hpp"
-#include "transformations/utils/utils.hpp"
 
 std::shared_ptr<ov::Node> rotaryEmbedding(ov::Output<ov::Node> input,
                                           ov::Output<ov::Node> past_seqlen,
@@ -61,12 +41,12 @@ std::shared_ptr<ov::Node> get_dimensions(const std::shared_ptr<ov::op::v3::Shape
                                          const std::vector<int>& dims);
 ov::OutputVector make_split(const ov::Output<ov::Node>& value, int64_t num_splits, int64_t axis);
 ov::OutputVector make_split(const ov::Output<ov::Node>& value, const std::vector<int64_t>& split_lengths, int64_t axis);
+std::shared_ptr<ov::Node> create_minus_inf(const ov::element::Type& T);
 
 ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
     MATCHER_SCOPE(GroupQeuryAttentionDecomposition);
     auto pattern_node = ov::pass::pattern::wrap_type<ov::op::v15::GroupQueryAttention>();
 
-    std::cout << "GQA Decomp create \n";
     matcher_pass_callback callback = [OV_CAPTURE_CPY_AND_THIS](ov::pass::pattern::Matcher& m) {
         auto& pattern_to_output = m.get_pattern_value_map();
         auto node =
@@ -88,7 +68,6 @@ ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
 ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     std::shared_ptr<ov::op::v15::GroupQueryAttention> node) {
     using namespace ov::op;
-    std::cout << "GQA Decomp \n";
 
     const auto num_heads = node->get_num_heads();
     const auto kv_num_heads = node->get_kv_num_heads();
@@ -107,6 +86,8 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     auto cos_cache = node->input_value(7);
     auto sin_cache = node->input_value(8);
 
+    auto T = Q.get_element_type();
+
     const auto node_shape = std::make_shared<v3::ShapeOf>(Q);
     const auto batch_size = get_dimensions(node_shape, {0});
     const auto current_seqlen_size = get_dimensions(node_shape, {1});
@@ -118,7 +99,7 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     // transpose Q, K and V to (batch_size, num_heads, sequence_len, head_size)
     auto perm = v0::Constant::create(ov::element::i64, ov::Shape{4}, {0, 2, 1, 3});
 
-    if (v15::GroupQueryAttention::is_null(K)) {
+    if (v15::Null::is_null(K)) {
         // Handle the packed QKV
         auto packed_qkv_shape = std::make_shared<v0::Concat>(
             ov::NodeVector{batch_size, current_seqlen_size, total_num_heads_node, head_size_node},
@@ -208,8 +189,8 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     auto hori_range = std::make_shared<v0::Unsqueeze>(mask_per_line_node, zero);  // 1x12 or 1x13
     auto vert_range = std::make_shared<v0::Unsqueeze>(mask_per_line_node, one);   // 12x1 or 13x1
     auto triu = std::make_shared<v1::Greater>(hori_range, vert_range);            // 12x12 or 13x13
-    auto typed_zero = v0::Constant::create(ov::element::f32, ov::Shape{}, {0});
-    auto minus_inf = v0::Constant::create(ov::element::f32, ov::Shape{}, {-std::numeric_limits<float>::infinity()});
+    auto typed_zero = v0::Constant::create(T, ov::Shape{}, {0});
+    auto minus_inf = create_minus_inf(T);
     auto atten_mask = std::make_shared<v1::Select>(triu, minus_inf, typed_zero);  // 12x12 or 13x13
     auto atten_mask_sliced = std::make_shared<v8::Slice>(atten_mask,
                                                          past_sequence_length,
@@ -220,7 +201,7 @@ ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
     // compute softmax((Q x K') / sqrt(head_size)) x V
     std::shared_ptr<ov::Node> qga_output;
     if (scale != 0.0f) {
-        auto scale_node = v0::Constant::create(ov::element::f32, Shape{}, {scale});
+        auto scale_node = v0::Constant::create(T, Shape{}, {scale});
         qga_output = std::make_shared<v13::ScaledDotProductAttention>(Q, K, V, atten_mask_sliced, scale_node, false);
     } else {
         qga_output = std::make_shared<v13::ScaledDotProductAttention>(Q, K, V, atten_mask_sliced, false);
@@ -318,4 +299,15 @@ ov::OutputVector make_split(const ov::Output<ov::Node>& value, int64_t num_split
     const auto split = std::make_shared<v1::Split>(value, axis_node, num_splits);
 
     return split->outputs();
+}
+
+std::shared_ptr<ov::Node> create_minus_inf(const ov::element::Type& T) {
+    // cf. make_attention_mask@src\plugins\intel_gpu\tests\common\subgraphs_builders.hpp
+    if (T == ov::element::f32) {
+        return ov::op::v0::Constant::create(T, ov::Shape{}, {-std::numeric_limits<float>::infinity()});
+    } else if (T == ov::element::f16) {
+        return ov::op::v0::Constant::create(T, ov::Shape{}, {std::numeric_limits<ov::float16>::lowest()});
+    } else {
+        OPENVINO_THROW("GroupQueryAttention only supports f32 and f16");
+    }
 }
