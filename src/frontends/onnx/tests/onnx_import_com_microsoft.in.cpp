@@ -1763,7 +1763,7 @@ OPENVINO_TEST(${BACKEND_NAME}, onnx_model_gqa_past_0_input_1_rotary) {
     test_case.add_input<float>(past_key);
     test_case.add_input<float>(past_value);
     test_case.add_input<int>(seqlens_k);
-    test_case.add_input<int>(total_sequence_length);
+    // test_case.add_input<int>(total_sequence_length);
     test_case.add_input<float>(cos_cache);
     test_case.add_input<float>(sin_cache);
     test_case.add_expected_output<float>(Shape{1, 1, 32}, expected_output);
@@ -1852,7 +1852,7 @@ OPENVINO_TEST(${BACKEND_NAME}, onnx_model_gqa_past_0_input_1_rotary_interleaved)
     test_case.add_input<float>(past_key);
     test_case.add_input<float>(past_value);
     test_case.add_input<int>(seqlens_k);
-    test_case.add_input<int>(total_sequence_length);
+    // test_case.add_input<int>(total_sequence_length);
     test_case.add_input<float>(cos_cache);
     test_case.add_input<float>(sin_cache);
     test_case.add_expected_output<float>(Shape{1, 1, 32}, expected_output);
@@ -1969,7 +1969,7 @@ OPENVINO_TEST(${BACKEND_NAME}, onnx_model_gqa_past_1_input_1_rotary) {
     test_case.add_input<float>(past_key);
     test_case.add_input<float>(past_value);
     test_case.add_input<int>(seqlens_k);
-    test_case.add_input<int>(total_sequence_length);
+    // test_case.add_input<int>(total_sequence_length);
     test_case.add_input<float>(cos_cache);
     test_case.add_input<float>(sin_cache);
     test_case.add_expected_output<float>(Shape{1, 1, 32}, expected_output);
@@ -2086,7 +2086,7 @@ OPENVINO_TEST(${BACKEND_NAME}, onnx_model_gqa_past_1_input_1_rotary_interleaved)
     test_case.add_input<float>(past_key);
     test_case.add_input<float>(past_value);
     test_case.add_input<int>(seqlens_k);
-    test_case.add_input<int>(total_sequence_length);
+    // test_case.add_input<int>(total_sequence_length);
     test_case.add_input<float>(cos_cache);
     test_case.add_input<float>(sin_cache);
     test_case.add_expected_output<float>(Shape{1, 1, 32}, expected_output);
