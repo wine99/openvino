@@ -98,7 +98,7 @@ ov::OutputVector group_query_attention(const ov::frontend::onnx::Node& node) {
             continue;
         ov_op_inputs.push_back(onnx_op_inputs[i]);
     }
-    return std::make_shared<v15::GroupQueryAttention>(ov_op_inputs,
+    return std::make_shared<GroupQueryAttention>(ov_op_inputs,
                                                       num_heads,
                                                       kv_num_heads,
                                                       scale,

@@ -47,12 +47,12 @@ std::shared_ptr<ov::Node> rotaryEmbedding(ov::Output<ov::Node> input,
 
 ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
     MATCHER_SCOPE(GroupQeuryAttentionDecomposition);
-    auto pattern_node = ov::pass::pattern::wrap_type<ov::op::v15::GroupQueryAttention>();
+    auto pattern_node = ov::pass::pattern::wrap_type<ov::op::GroupQueryAttention>();
 
     matcher_pass_callback callback = [OV_CAPTURE_CPY_AND_THIS](ov::pass::pattern::Matcher& m) {
         auto& pattern_to_output = m.get_pattern_value_map();
         auto node =
-            ov::as_type_ptr<ov::op::v15::GroupQueryAttention>(pattern_to_output.at(pattern_node).get_node_shared_ptr());
+            ov::as_type_ptr<ov::op::GroupQueryAttention>(pattern_to_output.at(pattern_node).get_node_shared_ptr());
 
         if (node == nullptr || transformation_callback(node)) {
             return false;
@@ -68,7 +68,7 @@ ov::pass::GroupQueryAttentionDecomposition::GroupQueryAttentionDecomposition() {
 }
 
 ov::OutputVector ov::pass::GroupQueryAttentionDecomposition::decompose(
-    std::shared_ptr<ov::op::v15::GroupQueryAttention> node) {
+    std::shared_ptr<ov::op::GroupQueryAttention> node) {
     using namespace ov::op;
 
     const auto num_heads = node->get_num_heads();
