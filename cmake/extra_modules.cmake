@@ -144,6 +144,8 @@ endif()\n")
     endif()
     list(APPEND extra_modules "${OpenVINO_SOURCE_DIR}/src/core/template_extension")
 
+    list(APPEND extra_modules "${OpenVINO_SOURCE_DIR}/src/core/gqa_extension")
+
     # add extra flags for compilation of extra modules:
     # since not all extra modules use OpenVINODeveloperPackage, we have to add these function calls here
     ov_dev_package_no_errors()
