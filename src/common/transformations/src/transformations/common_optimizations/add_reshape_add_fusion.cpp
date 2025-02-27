@@ -37,9 +37,6 @@ ov::pass::AddReshapeAddFusion::AddReshapeAddFusion() {
         auto c1_node = std::dynamic_pointer_cast<v0::Constant>(pattern_map.at(c1));
         auto c2_node = std::dynamic_pointer_cast<v0::Constant>(pattern_map.at(c2));
 
-        if (!add2_node || !reshape_node || !add1_node || !c1_node || !c2_node)
-            return false;
-
         if (ov::shape_size(c1_node->get_shape()) != 1 || ov::shape_size(c2_node->get_shape()) != 1)
             return false;
 
@@ -82,7 +79,7 @@ ov::pass::AddReshapeAddFusion::AddReshapeAddFusion() {
         // The reshape node now takes "x" directly
         reshape_node->input(0).replace_source_output(x);
 
-        auto fused_add = std::make_shared<v1::Add>(reshape_node->output(0), fused_const);
+        auto fused_add = register_new_node<v1::Add>(reshape_node->output(0), fused_const);
         fused_add->set_friendly_name(add2_node->get_friendly_name());
         ov::copy_runtime_info({add2_node, add1_node, c1_node, c2_node}, fused_add);
         ov::replace_node(add2_node, fused_add);
