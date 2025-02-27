@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "openvino/pass/graph_rewrite.hpp"
+#include "transformations/common_optimizations/add_reshape_add_fusion.hpp"
 #include "transformations_visibility.hpp"
 
 namespace ov {
@@ -50,5 +51,6 @@ public:
         add_matcher<ov::pass::AddMultiplyFusion>();
         add_matcher<ov::pass::AddAddFusion>();
         add_matcher<ov::pass::MultiplyMultiplyFusion>();
+        add_matcher<ov::pass::AddReshapeAddFusion>();
     }
 };
