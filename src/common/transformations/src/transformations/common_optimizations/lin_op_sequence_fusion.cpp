@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <vector>
-#include <iostream>
 
 #include "itt.hpp"
 #include "openvino/core/rt_info.hpp"
@@ -91,8 +90,6 @@ ov::pass::AddAddFusion::AddAddFusion() {
         Output<Node> add1_const = label_to_output[m_add1_constant];
         Output<Node> add2_const = label_to_output[m_add2_constant];
 
-        std::cout << add1_const.get_shape() << std::endl;
-        std::cout << add2_const.get_shape() << std::endl;
         // Replace Add->Add with single Add
         // Add operation will be added to the list of ops requested for pattern matching
         auto new_add =
@@ -155,7 +152,6 @@ ov::pass::EliminateAddZero::EliminateAddZero() {
         auto data_node = pattern_map.at(m_add);
         auto add_node = std::dynamic_pointer_cast<ov::op::v1::Add>(pattern_map.at(m_add));
         auto const_node = std::dynamic_pointer_cast<ov::op::v0::Constant>(pattern_map.at(m_constant));
-        std::cout << "add zero" << std::endl;
         if (ov::shape_size(const_node->get_shape()) != 1)
             return false;
 
@@ -168,7 +164,6 @@ ov::pass::EliminateAddZero::EliminateAddZero() {
         }
         case ov::element::i32: {
             int32_t value = *const_node->get_data_ptr<int32_t>();
-            std::cout << value << std::endl;
             is_zero = (value == 0);
             break;
         }
