@@ -573,13 +573,17 @@ event::ptr gpu_usm::fill(stream& stream, unsigned char pattern, const std::vecto
     auto& ev_ocl = downcast<ocl_event>(ev.get())->get();
     auto dep_ev_ocl = utils::get_cl_events(dep_events);
     try {
-        cl_stream.get_usm_helper().enqueue_fill_mem(cl_stream.get_cl_queue(),
+        cl_int ovgpu_dbg_fill_err = cl_stream.get_usm_helper().enqueue_fill_mem(cl_stream.get_cl_queue(),
                                                     _buffer.get(),
                                                     static_cast<const void*>(&pattern),
                                                     sizeof(unsigned char),
                                                     _bytes_count,
                                                     dep_ev_ocl.empty() ? nullptr : &dep_ev_ocl,
                                                     &ev_ocl);
+        if (getenv("OVGPU_FILL_DEBUG")) {
+            fprintf(stderr, "[ovgpu_fill_debug] bytes=%zu ptr=%p dep_events=%zu enqueue_err=%d\n",
+                    _bytes_count, _buffer.get(), dep_ev_ocl.size(), ovgpu_dbg_fill_err);
+        }
         if (blocking) {
             ev_ocl.wait();
         }

@@ -3146,6 +3146,13 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
                                                                                       bool use_async_compilation) {
     auto find_impl = [this](const program_node* node, const kernel_impl_params& params, shape_types shape_type) -> std::unique_ptr<primitive_impl> {
         OPENVINO_ASSERT(node != nullptr);
+        if (std::getenv("OVGPU_FC_TRACE") && node->is_type<fully_connected>()) {
+            std::cerr << "OVGPU_FC_TRACE: find_impl FC preferred=" << node->get_preferred_impl_type()
+                      << " forced=" << node->get_forced_impl_type()
+                      << " n_available=" << m_available_impls.size() << std::endl;
+            for (size_t k = 0; k < m_available_impls.size(); k++)
+                std::cerr << "OVGPU_FC_TRACE:   avail[" << k << "]=" << m_available_impls[k]->get_impl_type() << std::endl;
+        }
         for (auto& impl_manager : m_available_impls) {
             if ((impl_manager->get_shape_type() & shape_type) != shape_type)
                 continue;
@@ -3153,7 +3160,11 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
             if (!impl_manager->support_shapes(params))
                 continue;
 
+            if (std::getenv("OVGPU_FC_TRACE") && node->is_type<fully_connected>())
+                std::cerr << "OVGPU_FC_TRACE:   trying create impl_type=" << impl_manager->get_impl_type() << std::endl;
             auto impl = impl_manager->create(*node, params);
+            if (std::getenv("OVGPU_FC_TRACE") && node->is_type<fully_connected>())
+                std::cerr << "OVGPU_FC_TRACE:     -> " << (impl ? "selected" : "null") << std::endl;
             if (impl)
                 return impl;
         }

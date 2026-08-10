@@ -8,10 +8,13 @@
 #include "intel_gpu/runtime/utils.hpp"
 #include "registry/implementation_manager.hpp"
 #include "intel_gpu/runtime/debug_configuration.hpp"
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <cmath>
 
 #define LOG_AND_RETURN_FALSE(node) do {                                         \
+    if (std::getenv("OVGPU_FC_TRACE")) std::cerr << "OVGPU_FC_TRACE: reject oneDNN FC at " << __LINE__ << std::endl; \
     GPU_DEBUG_TRACE << (node).id() << " :  Do not select onednn" << std::endl;  \
     return false;                                                               \
 } while (0)
@@ -28,6 +31,27 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
         assert(node.is_type<fully_connected>());
         const auto& config = node.get_program().get_config();
         const auto& info = node.get_program().get_engine().get_device_info();
+        if (std::getenv("OVGPU_FC_TRACE")) {
+            const auto& fc_d = node.as<fully_connected>();
+            auto in0_dt = fc_d.get_input_layout(0).data_type;
+            auto wei_dt = fc_d.weights().get_output_layout(false).data_type;
+            auto out_dt = node.get_output_layout().data_type;
+            auto dt_name = [](const ov::element::Type& t) -> const char* {
+                if (t == data_types::f32) return "f32";
+                if (t == data_types::f16) return "f16";
+                if (t == data_types::bf16) return "bf16";
+                if (t == data_types::i8)  return "i8";
+                if (t == data_types::u8)  return "u8";
+                return "other";
+            };
+            std::cerr << "OVGPU_FC_TRACE: validate oneDNN FC: immad=" << info.supports_immad
+                      << " arch=" << static_cast<int>(info.arch)
+                      << " use_onednn=" << config.get_use_onednn()
+                      << " in0=" << dt_name(in0_dt) << " wei=" << dt_name(wei_dt)
+                      << " out=" << dt_name(out_dt)
+                      << " in_fmt=" << static_cast<int>(fc_d.get_input_layout(0).format.value)
+                      << " out_fmt=" << static_cast<int>(node.get_output_layout().format.value) << std::endl;
+        }
         if (!info.supports_immad || info.arch == gpu_arch::unknown || !config.get_use_onednn())
             LOG_AND_RETURN_FALSE(node);
 

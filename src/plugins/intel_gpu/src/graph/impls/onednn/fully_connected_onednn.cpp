@@ -12,6 +12,8 @@
 #include <oneapi/dnnl/dnnl.hpp>
 
 #include <algorithm>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <cmath>
 namespace cldnn {
@@ -172,6 +174,26 @@ protected:
 
         dnnl::memory::desc input_md = onednn::layout_to_memory_desc(input_layout, target_fmt);
         dnnl::memory::desc output_md = onednn::layout_to_memory_desc(output_layout, target_fmt);
+
+        if (std::getenv("OVGPU_FC_TRACE")) {
+            std::cerr << "OVGPU_FC_TRACE: input_layout  cldnn=" << input_layout.to_short_string() << std::endl;
+            std::cerr << "OVGPU_FC_TRACE: weights_layout cldnn=" << weights_layout.to_short_string() << std::endl;
+            std::cerr << "OVGPU_FC_TRACE: output_layout cldnn=" << output_layout.to_short_string() << std::endl;
+            std::cerr << "OVGPU_FC_TRACE: prim_input_size=" << prim_input_size << " weights_rank=" << prim_weights_rank
+                      << " weights_transposed=" << weights_transposed << " target_fmt_tag=" << (int)target_fmt << std::endl;
+            auto dump = [](const char* tag, const dnnl::memory::desc& md) {
+                std::string s = tag;
+                s += " dims=";
+                for (int i = 0; i < md.get_ndims(); i++) { s += std::to_string(md.get_dims()[i]); s += (i+1<md.get_ndims()?"," : ""); }
+                s += " tag=";
+                auto fmt = md.get_format_kind() == dnnl::memory::format_kind::blocked ? std::string("blocked") : std::to_string((int)md.get_format_kind());
+                s += fmt;
+                std::cerr << "OVGPU_FC_TRACE: " << s << std::endl;
+            };
+            dump("input ", input_md);
+            dump("weight", weights_md);
+            dump("output", output_md);
+        }
 
         if (has_bias) {
             auto bias_l = impl_params.get_input_layout(2);
@@ -464,6 +486,9 @@ public:
 
 std::unique_ptr<primitive_impl> FullyConnectedImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
     assert(node.is_type<fully_connected>());
+    if (std::getenv("OVGPU_FC_TRACE")) {
+        std::cerr << "OVGPU_FC_TRACE: oneDNN FC selected (impl_types::onednn)" << std::endl;
+    }
     return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
 }
 
